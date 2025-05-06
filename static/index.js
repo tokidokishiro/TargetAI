@@ -32,16 +32,16 @@ document.addEventListener('DOMContentLoaded', function() {
         // UI更新: ローディング表示
         submitBtn.disabled = true;
         loading.style.display = 'block';
-        results.style.display = 'none';
         errorMessage.style.display = 'none';
         
-        // すべてのセクションを非表示にリセット
+        // すべてのセクションを一度リセット
+        results.style.display = 'none';
         aiAnswerSection.style.display = 'none';
         productsSection.style.display = 'none';
         faqsSection.style.display = 'none';
         
-        // APIリクエスト
-        fetch('/ask', {
+        // ステップ1: 関連商品とFAQを先に取得（高速）
+        fetch('/search', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -50,18 +50,16 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error('サーバーエラーが発生しました。');
+                throw new Error('商品とFAQの検索中にエラーが発生しました。');
             }
             return response.json();
         })
         .then(data => {
-            // UI更新: 結果表示
-            loading.style.display = 'none';
-            submitBtn.disabled = false;
+            // UI更新: 結果の一部表示
             results.style.display = 'flex';
             
-            // AI回答表示
-            aiAnswer.textContent = data.answer || 'AIからの回答がありません。';
+            // AI回答部分にローディング表示
+            aiAnswer.innerHTML = '<div class="ai-loading"><i class="fas fa-spinner"></i> AIが回答を生成中...</div>';
             aiAnswerSection.style.display = 'block';
             
             // 商品リスト表示
@@ -80,10 +78,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 faqsSection.style.display = 'none';
             }
             
-            // デバッグログ
-            console.log('AI回答:', data.answer);
-            console.log('商品リスト:', data.products);
-            console.log('FAQリスト:', data.faqs);
+            // ステップ2: AIの回答を取得（時間がかかる処理）
+            return fetch('/answer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ question: question })
+            });
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('AI回答の生成中にエラーが発生しました。');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // AIの回答を表示
+            aiAnswer.textContent = data.answer || 'AIからの回答がありません。';
+            
+            // ローディング完了
+            loading.style.display = 'none';
+            submitBtn.disabled = false;
         })
         .catch(error => {
             loading.style.display = 'none';

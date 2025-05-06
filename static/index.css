@@ -147,10 +147,21 @@ button:disabled {
     display: none;
 }
 
-.loading i {
+.loading i,
+.ai-loading i {
     animation: spin 2s linear infinite;
     font-size: 24px;
     color: #3498db;
+}
+
+.ai-loading {
+    padding: 20px;
+    text-align: center;
+    font-size: 16px;
+    color: #7f8c8d;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border-left: 4px solid #3498db;
 }
 
 @keyframes spin {

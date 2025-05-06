@@ -155,6 +155,50 @@ faqs = load_faqs_from_file(FAQS_FILE)
 def index():
     return render_template('index.html')
 
+@app.route('/search', methods=['POST'])
+def search():
+    """関連商品とFAQだけを高速に返すエンドポイント"""
+    data = request.get_json()
+    user_question = data.get('question', '')
+    
+    if not user_question:
+        return jsonify({
+            'error': '質問が入力されていません。'
+        })
+    
+    # 関連商品と関連FAQを検索
+    related_products = find_related_products(user_question, products)
+    related_faqs = find_related_faqs(user_question, faqs)
+    
+    return jsonify({
+        'products': related_products,
+        'faqs': related_faqs
+    })
+
+@app.route('/answer', methods=['POST'])
+def get_answer():
+    """AIの回答を生成するエンドポイント"""
+    data = request.get_json()
+    user_question = data.get('question', '')
+    
+    if not user_question:
+        return jsonify({
+            'error': '質問が入力されていません。'
+        })
+    
+    # 関連情報を再度取得（または前のステップの結果をキャッシュしてもよい）
+    related_products = find_related_products(user_question, products)
+    related_faqs = find_related_faqs(user_question, faqs)
+    all_related = related_products + related_faqs
+    
+    # Geminiによる回答生成
+    ai_answer = generate_answer_gemini(user_question, all_related)
+    
+    return jsonify({
+        'answer': ai_answer
+    })
+
+# 元のエンドポイントも残しておく（互換性のため）
 @app.route('/ask', methods=['POST'])
 def ask_question():
     data = request.get_json()
