@@ -1,4 +1,3 @@
-
 document.addEventListener('DOMContentLoaded', function() {
     const questionInput = document.getElementById('question');
     const submitBtn = document.getElementById('submit-btn');
@@ -10,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const faqsList = document.getElementById('faqs-list');
     const productsSection = document.getElementById('products-section');
     const faqsSection = document.getElementById('faqs-section');
+    const aiAnswerSection = document.getElementById('ai-answer-section');
     
     // Enterキーで送信
     questionInput.addEventListener('keypress', function(e) {
@@ -35,6 +35,11 @@ document.addEventListener('DOMContentLoaded', function() {
         results.style.display = 'none';
         errorMessage.style.display = 'none';
         
+        // すべてのセクションを非表示にリセット
+        aiAnswerSection.style.display = 'none';
+        productsSection.style.display = 'none';
+        faqsSection.style.display = 'none';
+        
         // APIリクエスト
         fetch('/ask', {
             method: 'POST',
@@ -53,26 +58,32 @@ document.addEventListener('DOMContentLoaded', function() {
             // UI更新: 結果表示
             loading.style.display = 'none';
             submitBtn.disabled = false;
-            results.style.display = 'block';
+            results.style.display = 'flex';
             
             // AI回答表示
-            aiAnswer.textContent = data.answer;
+            aiAnswer.textContent = data.answer || 'AIからの回答がありません。';
+            aiAnswerSection.style.display = 'block';
             
             // 商品リスト表示
             if (data.products && data.products.length > 0) {
-                productsSection.style.display = 'block';
                 displayProducts(data.products);
+                productsSection.style.display = 'block';
             } else {
                 productsSection.style.display = 'none';
             }
             
             // FAQリスト表示
             if (data.faqs && data.faqs.length > 0) {
-                faqsSection.style.display = 'block';
                 displayFAQs(data.faqs);
+                faqsSection.style.display = 'block';
             } else {
                 faqsSection.style.display = 'none';
             }
+            
+            // デバッグログ
+            console.log('AI回答:', data.answer);
+            console.log('商品リスト:', data.products);
+            console.log('FAQリスト:', data.faqs);
         })
         .catch(error => {
             loading.style.display = 'none';
@@ -83,6 +94,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function displayProducts(products) {
         productsList.innerHTML = '';
+        if (!products || products.length === 0) return;
+        
         products.forEach(product => {
             const productItem = document.createElement('div');
             productItem.className = 'result-item';
@@ -108,6 +121,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function displayFAQs(faqs) {
         faqsList.innerHTML = '';
+        if (!faqs || faqs.length === 0) return;
+        
         faqs.forEach(faq => {
             const faqItem = document.createElement('div');
             faqItem.className = 'result-item';

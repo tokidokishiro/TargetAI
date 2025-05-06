@@ -7,7 +7,7 @@ body {
     color: #333;
 }
 .container {
-    max-width: 800px;
+    max-width: 1000px;
     margin: 0 auto;
     background-color: #fff;
     padding: 30px;
@@ -47,25 +47,54 @@ button:disabled {
     background-color: #95a5a6;
     cursor: not-allowed;
 }
+
+/* 新しいレイアウト構造 */
 .results {
     margin-top: 20px;
+    display: flex;
+    flex-direction: row-reverse;
+    gap: 20px;
 }
-.result-section {
-    margin-bottom: 25px;
-    border-top: 1px solid #eee;
-    padding-top: 15px;
+
+/* メインセクション（AI回答） */
+.main-section {
+    flex: 1;
+    order: 1;
 }
-.result-section h2 {
+
+/* サイドバーセクション（商品とFAQ） */
+.sidebar-sections {
+    width: 300px;
+    order: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.main-section h2,
+.sidebar-section h2 {
     color: #2c3e50;
     margin-bottom: 15px;
     font-size: 1.2em;
     display: flex;
     align-items: center;
 }
-.result-section h2 i {
+
+.main-section h2 i,
+.sidebar-section h2 i {
     margin-right: 10px;
     color: #3498db;
 }
+
+/* スクロール可能なリスト */
+.scrollable-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 5px;
+}
+
 .result-item {
     background-color: #f8f9fa;
     padding: 15px;
@@ -73,31 +102,37 @@ button:disabled {
     border-radius: 4px;
     border-left: 3px solid #3498db;
 }
+
 .product-name {
     font-weight: bold;
     color: #2c3e50;
     margin-bottom: 5px;
 }
+
 .product-description {
     color: #7f8c8d;
     font-size: 0.95em;
 }
+
 .score {
     font-size: 0.85em;
     color: #7f8c8d;
     margin-top: 8px;
 }
+
 .faq-question {
     font-weight: bold;
     color: #2c3e50;
     margin-bottom: 10px;
 }
+
 .faq-answer {
     background-color: #edf2f7;
     padding: 10px 15px;
     border-radius: 4px;
     margin-top: 5px;
 }
+
 .ai-answer {
     background-color: #edf7f2;
     padding: 20px;
@@ -105,20 +140,24 @@ button:disabled {
     border-left: 4px solid #27ae60;
     white-space: pre-line;
 }
+
 .loading {
     text-align: center;
     margin: 20px 0;
     display: none;
 }
+
 .loading i {
     animation: spin 2s linear infinite;
     font-size: 24px;
     color: #3498db;
 }
+
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
 .error-message {
     color: #e74c3c;
     text-align: center;
@@ -129,3 +168,22 @@ button:disabled {
     display: none;
 }
 
+/* レスポンシブデザイン */
+@media (max-width: 768px) {
+    .results {
+        flex-direction: column;
+    }
+    
+    .sidebar-sections {
+        width: 100%;
+        order: 1;
+    }
+    
+    .main-section {
+        order: 2;
+    }
+    
+    .container {
+        padding: 15px;
+    }
+}

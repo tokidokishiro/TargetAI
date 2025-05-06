@@ -23,19 +23,21 @@
         <div class="error-message" id="error-message"></div>
         
         <div class="results" id="results" style="display: none;">
-            <div class="result-section">
+            <div class="main-section" id="ai-answer-section">
                 <h2><i class="fas fa-robot"></i> AIによる回答</h2>
                 <div class="ai-answer" id="ai-answer"></div>
             </div>
             
-            <div class="result-section" id="products-section">
-                <h2><i class="fas fa-shopping-bag"></i> 関連商品</h2>
-                <div id="products-list"></div>
-            </div>
-            
-            <div class="result-section" id="faqs-section">
-                <h2><i class="fas fa-question-circle"></i> 関連Q&A</h2>
-                <div id="faqs-list"></div>
+            <div class="sidebar-sections">
+                <div class="sidebar-section" id="products-section">
+                    <h2><i class="fas fa-shopping-bag"></i> 関連商品</h2>
+                    <div id="products-list" class="scrollable-list"></div>
+                </div>
+                
+                <div class="sidebar-section" id="faqs-section">
+                    <h2><i class="fas fa-question-circle"></i> 関連Q&A</h2>
+                    <div id="faqs-list" class="scrollable-list"></div>
+                </div>
             </div>
         </div>
     </div>
