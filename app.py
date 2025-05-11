@@ -310,4 +310,5 @@ if __name__ == '__main__':
     init_app(app)
     
     # デバッグモードで実行（本番環境では debug=False にすること、でないときはTrue）
-    app.run(debug=False)
+    #app.run(debug=True)
+    app.run(host="0.0.0.0", debug=False)
