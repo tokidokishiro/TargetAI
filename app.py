@@ -309,5 +309,5 @@ if __name__ == '__main__':
     # アプリケーション起動前に非同期でリソースのロードを開始
     init_app(app)
     
-    # デバッグモードで実行（本番環境では debug=False にすること）
-    app.run(debug=True)
+    # デバッグモードで実行（本番環境では debug=False にすること、でないときはTrue）
+    app.run(debug=False)
