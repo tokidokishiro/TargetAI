@@ -1,37 +1,78 @@
 from flask import Flask, render_template, request, jsonify
 import json
-from janome.tokenizer import Tokenizer
-import google.generativeai as genai
-import os
 from dotenv import load_dotenv
+import os
+import threading
 
 app = Flask(__name__)
+
+# グローバル変数
+products = []
+faqs = []
+tokenizer = None
+model = None
 
 # .env ファイルをロード
 load_dotenv()
 
-# 環境変数から Gemini APIキーを読み込む
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+# データファイルのパス設定
+PRODUCTS_FILE = "G&D.json"
+FAQS_FILE = "Q&A.json"
 
-# APIキーが存在しない場合はエラーメッセージを用意
-if not GEMINI_API_KEY:
-    print("警告: .env ファイルに GEMINI_API_KEY が設定されていません。")
+# バックグラウンドで重い処理を行うための関数
+def load_resources():
+    global products, faqs, tokenizer, model
+    
+    # 1. データファイルの読み込み
+    products = load_products_from_file(PRODUCTS_FILE)
+    faqs = load_faqs_from_file(FAQS_FILE)
+    
+    # 2. Janomeのトークナイザーを遅延ロード
+    from janome.tokenizer import Tokenizer
+    tokenizer = Tokenizer()
+    
+    # 3. Gemini APIの設定
+    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+    if GEMINI_API_KEY:
+        import google.generativeai as genai
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel('models/gemini-2.5-pro-exp-03-25')
+    else:
+        print("警告: .env ファイルに GEMINI_API_KEY が設定されていません。")
 
-# Gemini APIの設定（APIキーがある場合のみ）
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('models/gemini-2.5-pro-exp-03-25')
+# JSONファイルから商品データを読み込み
+def load_products_from_file(filename):
+    try:
+        with open(filename, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"商品データ読み込みエラー: {e}")
+        return []
 
-# --- 関数定義 ---
+# FAQデータ読み込み
+def load_faqs_from_file(filename):
+    try:
+        with open(filename, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"FAQデータ読み込みエラー: {e}")
+        return []
 
-# ① ユーザーの質問からキーワードを抽出
+# ユーザーの質問からキーワードを抽出
 def extract_keywords(text):
-    t = Tokenizer()
-    return list({token.surface for token in t.tokenize(text)
-                    if token.part_of_speech.split(',')[0] in ["名詞", "形容詞"]})
+    global tokenizer
+    
+    # トークナイザーが読み込まれていない場合
+    if tokenizer is None:
+        # 簡易的なキーワード抽出（緊急時用）
+        return [word for word in text.split() if len(word) > 1]
+    
+    return list({token.surface for token in tokenizer.tokenize(text)
+                if token.part_of_speech.split(',')[0] in ["名詞", "形容詞"]})
 
-# ② 商品群から関連性の高い商品を抽出
-def find_related_products(user_question, products, score_threshold=2, top_n=3):
+# 商品群から関連性の高い商品を抽出
+def find_related_products(user_question, score_threshold=2, top_n=3):
+    global products
     keywords = extract_keywords(user_question)
     results = []
 
@@ -60,17 +101,9 @@ def find_related_products(user_question, products, score_threshold=2, top_n=3):
     top_score = sorted_results[min(top_n - 1, len(sorted_results) - 1)]["スコア"]
     return [r for r in sorted_results if r["スコア"] >= top_score]
 
-# ③ JSONファイルから商品データを読み込み
-def load_products_from_file(filename):
-    try:
-        with open(filename, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"商品データ読み込みエラー: {e}")
-        return []
-
-# ④ FAQデータから関連Q&Aを抽出
-def find_related_faqs(user_question, faqs, score_threshold=5, top_n=2, score_gap_threshold=5):
+# FAQデータから関連Q&Aを抽出
+def find_related_faqs(user_question, score_threshold=5, top_n=2, score_gap_threshold=5):
+    global faqs
     keywords = extract_keywords(user_question)
     results = []
 
@@ -111,19 +144,12 @@ def find_related_faqs(user_question, faqs, score_threshold=5, top_n=2, score_gap
     top_score = sorted_results[min(top_n - 1, len(sorted_results) - 1)]["スコア"]
     return [r for r in sorted_results if r["スコア"] >= top_score]
 
-# FAQデータ読み込み
-def load_faqs_from_file(filename):
-    try:
-        with open(filename, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"FAQデータ読み込みエラー: {e}")
-        return []
-
-# --- Geminiを使用した回答生成関数 ---
+# Geminiを使用した回答生成関数
 def generate_answer_gemini(question, related_items):
-    if not GEMINI_API_KEY:
-        return "Gemini APIキーが設定されていないため、回答を生成できません。"
+    global model
+    
+    if model is None:
+        return "AIモデルがロードされていないため、回答を生成できません。しばらくお待ちください。"
         
     if not related_items:
         return "関連情報が見つかりませんでした。"
@@ -143,21 +169,53 @@ def generate_answer_gemini(question, related_items):
     except Exception as e:
         return f"回答生成中にエラーが発生しました: {e}"
 
-# データファイルのパス設定
-PRODUCTS_FILE = "G&D.json"
-FAQS_FILE = "Q&A.json"
+# アプリの準備状態を示す変数
+app_ready = False
 
-# アプリケーション初期化時にデータを読み込む
-products = load_products_from_file(PRODUCTS_FILE)
-faqs = load_faqs_from_file(FAQS_FILE)
+# Flask 2.3.0以降では before_first_request が削除されたため、
+# 代わりに with app.app_context() を使用するか、別の方法を採用します
+# 以下のコードは特定のBlueprint用ではなく、アプリ全体に適用されます
+
+def init_app(app):
+    global app_ready
+    # アプリが初期化されるときに呼ばれる関数
+    if not app_ready:
+        app_ready = True
+        # バックグラウンドスレッドで重い処理を実行
+        threading.Thread(target=load_resources, daemon=True).start()
 
 @app.route('/')
 def index():
+    global app_ready, products, faqs
+    
+    # リソースがまだロードされていない場合
+    if not app_ready and not products and not faqs:
+        init_app(app)
+    
     return render_template('index.html')
+
+@app.route('/status')
+def status():
+    """リソースのロード状態を確認するAPI"""
+    global tokenizer, model, products, faqs
+    
+    resources_loaded = {
+        'tokenizer': tokenizer is not None,
+        'model': model is not None,
+        'products': len(products) > 0,
+        'faqs': len(faqs) > 0
+    }
+    
+    all_loaded = all(resources_loaded.values())
+    
+    return jsonify({
+        'ready': all_loaded,
+        'resources': resources_loaded
+    })
 
 @app.route('/search', methods=['POST'])
 def search():
-    """関連商品とFAQだけを高速に返すエンドポイント"""
+    """関連商品とFAQだけを返すエンドポイント"""
     data = request.get_json()
     user_question = data.get('question', '')
     
@@ -166,9 +224,17 @@ def search():
             'error': '質問が入力されていません。'
         })
     
+    # リソースがまだロードされていない場合
+    global products, faqs
+    if not products or not faqs:
+        return jsonify({
+            'loading': True,
+            'message': 'データをロード中です。しばらくお待ちください。'
+        })
+    
     # 関連商品と関連FAQを検索
-    related_products = find_related_products(user_question, products)
-    related_faqs = find_related_faqs(user_question, faqs)
+    related_products = find_related_products(user_question)
+    related_faqs = find_related_faqs(user_question)
     
     return jsonify({
         'products': related_products,
@@ -186,9 +252,17 @@ def get_answer():
             'error': '質問が入力されていません。'
         })
     
-    # 関連情報を再度取得（または前のステップの結果をキャッシュしてもよい）
-    related_products = find_related_products(user_question, products)
-    related_faqs = find_related_faqs(user_question, faqs)
+    # リソースがまだロードされていない場合
+    global model
+    if model is None:
+        return jsonify({
+            'loading': True,
+            'message': 'AIモデルをロード中です。しばらくお待ちください。'
+        })
+    
+    # 関連情報を取得
+    related_products = find_related_products(user_question)
+    related_faqs = find_related_faqs(user_question)
     all_related = related_products + related_faqs
     
     # Geminiによる回答生成
@@ -209,9 +283,17 @@ def ask_question():
             'error': '質問が入力されていません。'
         })
     
+    # リソースがまだロードされていない場合
+    global model, products, faqs
+    if model is None or not products or not faqs:
+        return jsonify({
+            'loading': True,
+            'message': 'システムをロード中です。しばらくお待ちください。'
+        })
+    
     # 関連商品と関連FAQを検索
-    related_products = find_related_products(user_question, products)
-    related_faqs = find_related_faqs(user_question, faqs)
+    related_products = find_related_products(user_question)
+    related_faqs = find_related_faqs(user_question)
     
     # Geminiによる回答生成
     all_related = related_products + related_faqs
@@ -224,10 +306,8 @@ def ask_question():
     })
 
 if __name__ == '__main__':
-    if not products:
-        print(f"警告: 商品データファイル '{PRODUCTS_FILE}' が読み込めませんでした。")
-    if not faqs:
-        print(f"警告: FAQデータファイル '{FAQS_FILE}' が読み込めませんでした。")
+    # アプリケーション起動前に非同期でリソースのロードを開始
+    init_app(app)
     
     # デバッグモードで実行（本番環境では debug=False にすること）
     app.run(debug=True)

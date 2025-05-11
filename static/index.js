@@ -1,171 +1,200 @@
 document.addEventListener('DOMContentLoaded', function() {
     const questionInput = document.getElementById('question');
-    const submitBtn = document.getElementById('submit-btn');
-    const loading = document.querySelector('.loading');
-    const results = document.getElementById('results');
-    const errorMessage = document.getElementById('error-message');
-    const aiAnswer = document.getElementById('ai-answer');
-    const productsList = document.getElementById('products-list');
-    const faqsList = document.getElementById('faqs-list');
-    const productsSection = document.getElementById('products-section');
-    const faqsSection = document.getElementById('faqs-section');
-    const aiAnswerSection = document.getElementById('ai-answer-section');
+    const searchBtn = document.getElementById('search-btn');
+    const loadingElement = document.getElementById('loading');
+    const resultElement = document.getElementById('result');
     
-    // Enterキーで送信
-    questionInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            submitQuestion();
-        }
-    });
+    // システム状態を定期的に確認
+    checkSystemStatus();
+    const statusInterval = setInterval(checkSystemStatus, 3000);
     
-    // ボタンクリックで送信
-    submitBtn.addEventListener('click', submitQuestion);
-    
-    function submitQuestion() {
+    searchBtn.addEventListener('click', async function() {
         const question = questionInput.value.trim();
-        
         if (!question) {
-            showError('質問を入力してください。');
+            alert('質問を入力してください');
             return;
         }
         
-        // UI更新: ローディング表示
-        submitBtn.disabled = true;
-        loading.style.display = 'block';
-        errorMessage.style.display = 'none';
+        // 検索開始
+        showLoading();
+        resultElement.innerHTML = '';
         
-        // すべてのセクションを一度リセット
-        results.style.display = 'none';
-        aiAnswerSection.style.display = 'none';
-        productsSection.style.display = 'none';
-        faqsSection.style.display = 'none';
-        
-        // ステップ1: 関連商品とFAQを先に取得（高速）
-        fetch('/search', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ question: question })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('商品とFAQの検索中にエラーが発生しました。');
-            }
-            return response.json();
-        })
-        .then(data => {
-            // UI更新: 結果の一部表示
-            results.style.display = 'flex';
-            
-            // AI回答部分にローディング表示
-            aiAnswer.innerHTML = '<div class="ai-loading"><i class="fas fa-spinner"></i> AIが回答を生成中...</div>';
-            aiAnswerSection.style.display = 'block';
-            
-            // 商品リスト表示
-            if (data.products && data.products.length > 0) {
-                displayProducts(data.products);
-                productsSection.style.display = 'block';
-            } else {
-                productsSection.style.display = 'none';
-            }
-            
-            // FAQリスト表示
-            if (data.faqs && data.faqs.length > 0) {
-                displayFAQs(data.faqs);
-                faqsSection.style.display = 'block';
-            } else {
-                faqsSection.style.display = 'none';
-            }
-            
-            // ステップ2: AIの回答を取得（時間がかかる処理）
-            return fetch('/answer', {
+        try {
+            // 1. まず検索結果だけを素早く表示
+            const searchResponse = await fetch('/search', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ question: question })
+                body: JSON.stringify({ question })
             });
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('AI回答の生成中にエラーが発生しました。');
+            
+            const searchData = await searchResponse.json();
+            
+            // ロード中の場合
+            if (searchData.loading) {
+                resultElement.innerHTML = `
+                    <div class="section">
+                        <h3>お待ちください</h3>
+                        <p>${searchData.message}</p>
+                    </div>
+                `;
+                hideLoading();
+                return;
             }
-            return response.json();
-        })
-        .then(data => {
-            // AIの回答を表示
-            aiAnswer.textContent = data.answer || 'AIからの回答がありません。';
             
-            // ローディング完了
-            loading.style.display = 'none';
-            submitBtn.disabled = false;
-        })
-        .catch(error => {
-            loading.style.display = 'none';
-            submitBtn.disabled = false;
-            showError(error.message);
-        });
-    }
+            // 検索結果を表示
+            displaySearchResults(searchData);
+            
+            // 2. 次にAI回答を取得（これは時間がかかる）
+            const answerResponse = await fetch('/answer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ question })
+            });
+            
+            const answerData = await answerResponse.json();
+            
+            // ロード中の場合
+            if (answerData.loading) {
+                resultElement.innerHTML += `
+                    <div class="section answer-section">
+                        <h3>AI回答</h3>
+                        <p>${answerData.message}</p>
+                    </div>
+                `;
+                hideLoading();
+                return;
+            }
+            
+            // AI回答を表示
+            displayAnswer(answerData);
+            
+        } catch (error) {
+            console.error('Error:', error);
+            resultElement.innerHTML = `
+                <div class="section">
+                    <h3>エラーが発生しました</h3>
+                    <p>申し訳ありませんが、処理中にエラーが発生しました。</p>
+                </div>
+            `;
+        } finally {
+            hideLoading();
+        }
+    });
     
-    function displayProducts(products) {
-        productsList.innerHTML = '';
-        if (!products || products.length === 0) return;
+    function displaySearchResults(data) {
+        let resultsHTML = '';
         
-        products.forEach(product => {
-            const productItem = document.createElement('div');
-            productItem.className = 'result-item';
+        // 商品情報の表示
+        if (data.products && data.products.length > 0) {
+            let productsHTML = '';
+            data.products.forEach(product => {
+                productsHTML += `
+                    <div class="product-item">
+                        <h4>${product.商品名}</h4>
+                        <p>${product.説明 || ''}</p>
+                        ${product.その他 ? `<p><small>${product.その他}</small></p>` : ''}
+                    </div>
+                `;
+            });
             
-            const name = document.createElement('div');
-            name.className = 'product-name';
-            name.textContent = product.商品名;
-            
-            const description = document.createElement('div');
-            description.className = 'product-description';
-            description.textContent = product.説明 || '説明がありません';
-            
-            const score = document.createElement('div');
-            score.className = 'score';
-            score.textContent = `関連スコア: ${product.スコア}`;
-            
-            productItem.appendChild(name);
-            productItem.appendChild(description);
-            productItem.appendChild(score);
-            productsList.appendChild(productItem);
-        });
-    }
-    
-    function displayFAQs(faqs) {
-        faqsList.innerHTML = '';
-        if (!faqs || faqs.length === 0) return;
+            resultsHTML += `
+                <div class="section">
+                    <h3>関連商品</h3>
+                    ${productsHTML}
+                </div>
+            `;
+        }
         
-        faqs.forEach(faq => {
-            const faqItem = document.createElement('div');
-            faqItem.className = 'result-item';
+        // FAQ情報の表示
+        if (data.faqs && data.faqs.length > 0) {
+            let faqsHTML = '';
+            data.faqs.forEach(faq => {
+                faqsHTML += `
+                    <div class="faq-item">
+                        <h4>${faq.question}</h4>
+                        <p>${faq.answer}</p>
+                    </div>
+                `;
+            });
             
-            const question = document.createElement('div');
-            question.className = 'faq-question';
-            question.textContent = `Q: ${faq.question}`;
-            
-            const answer = document.createElement('div');
-            answer.className = 'faq-answer';
-            answer.textContent = `A: ${faq.answer}`;
-            
-            const score = document.createElement('div');
-            score.className = 'score';
-            score.textContent = `関連スコア: ${faq.スコア}`;
-            
-            faqItem.appendChild(question);
-            faqItem.appendChild(answer);
-            faqItem.appendChild(score);
-            faqsList.appendChild(faqItem);
-        });
+            resultsHTML += `
+                <div class="section">
+                    <h3>関連FAQ</h3>
+                    ${faqsHTML}
+                </div>
+            `;
+        }
+        
+        // 検索結果がない場合
+        if (!data.products?.length && !data.faqs?.length) {
+            resultsHTML += `
+                <div class="section">
+                    <h3>検索結果</h3>
+                    <p>関連する情報が見つかりませんでした。</p>
+                </div>
+            `;
+        }
+        
+        resultElement.innerHTML = resultsHTML;
     }
     
-    function showError(message) {
-        errorMessage.textContent = message;
-        errorMessage.style.display = 'block';
-        loading.style.display = 'none';
-        submitBtn.disabled = false;
+    function displayAnswer(data) {
+        const answerHTML = `
+            <div class="section answer-section">
+                <h3>AI回答</h3>
+                <p>${data.answer}</p>
+            </div>
+        `;
+        
+        resultElement.innerHTML += answerHTML;
+    }
+    
+    function showLoading() {
+        loadingElement.classList.remove('hidden');
+    }
+    
+    function hideLoading() {
+        loadingElement.classList.add('hidden');
+    }
+    
+    async function checkSystemStatus() {
+        try {
+            const response = await fetch('/status');
+            const statusData = await response.json();
+            
+            updateStatusIndicator('products', statusData.resources.products);
+            updateStatusIndicator('faqs', statusData.resources.faqs);
+            updateStatusIndicator('tokenizer', statusData.resources.tokenizer);
+            updateStatusIndicator('model', statusData.resources.model);
+            
+            // すべてのリソースがロードされたらステータスチェックを停止
+            if (statusData.ready) {
+                clearInterval(statusInterval);
+                // 5秒後にステータス表示を非表示にする
+                setTimeout(() => {
+                    document.getElementById('system-status').classList.add('hidden');
+                }, 5000);
+            }
+            
+        } catch (error) {
+            console.error('Status check error:', error);
+        }
+    }
+    
+    function updateStatusIndicator(resourceName, isLoaded) {
+        const indicator = document.getElementById(`status-${resourceName}`);
+        const text = document.getElementById(`status-${resourceName}-text`);
+        
+        if (isLoaded) {
+            indicator.className = 'status-indicator status-loaded';
+            text.textContent = '準備完了';
+        } else {
+            indicator.className = 'status-indicator status-loading';
+            text.textContent = 'ロード中...';
+        }
     }
 });

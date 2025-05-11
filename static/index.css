@@ -1,200 +1,96 @@
 body {
-    font-family: 'Helvetica Neue', Arial, sans-serif;
-    line-height: 1.6;
-    margin: 0;
-    padding: 20px;
-    background-color: #f5f7fa;
-    color: #333;
-}
-.container {
-    max-width: 1000px;
+    font-family: Arial, sans-serif;
+    max-width: 800px;
     margin: 0 auto;
-    background-color: #fff;
-    padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-h1 {
-    text-align: center;
-    color: #2c3e50;
-    margin-bottom: 30px;
-}
-.search-container {
-    display: flex;
-    margin-bottom: 25px;
-}
-#question {
-    flex: 1;
-    padding: 12px 15px;
-    border: 1px solid #ddd;
-    border-radius: 4px 0 0 4px;
-    font-size: 16px;
-}
-button {
-    background-color: #3498db;
-    color: white;
-    border: none;
-    padding: 12px 20px;
-    cursor: pointer;
-    border-radius: 0 4px 4px 0;
-    font-size: 16px;
-    transition: background-color 0.3s;
-}
-button:hover {
-    background-color: #2980b9;
-}
-button:disabled {
-    background-color: #95a5a6;
-    cursor: not-allowed;
-}
-
-/* 新しいレイアウト構造 */
-.results {
-    margin-top: 20px;
-    display: flex;
-    flex-direction: row-reverse;
-    gap: 20px;
-}
-
-/* メインセクション（AI回答） */
-.main-section {
-    flex: 1;
-    order: 1;
-}
-
-/* サイドバーセクション（商品とFAQ） */
-.sidebar-sections {
-    width: 300px;
-    order: 2;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.main-section h2,
-.sidebar-section h2 {
-    color: #2c3e50;
-    margin-bottom: 15px;
-    font-size: 1.2em;
-    display: flex;
-    align-items: center;
-}
-
-.main-section h2 i,
-.sidebar-section h2 i {
-    margin-right: 10px;
-    color: #3498db;
-}
-
-/* スクロール可能なリスト */
-.scrollable-list {
-    max-height: 300px;
-    overflow-y: auto;
-    border: 1px solid #eee;
-    border-radius: 4px;
-    padding: 5px;
-}
-
-.result-item {
-    background-color: #f8f9fa;
-    padding: 15px;
-    margin-bottom: 10px;
-    border-radius: 4px;
-    border-left: 3px solid #3498db;
-}
-
-.product-name {
-    font-weight: bold;
-    color: #2c3e50;
-    margin-bottom: 5px;
-}
-
-.product-description {
-    color: #7f8c8d;
-    font-size: 0.95em;
-}
-
-.score {
-    font-size: 0.85em;
-    color: #7f8c8d;
-    margin-top: 8px;
-}
-
-.faq-question {
-    font-weight: bold;
-    color: #2c3e50;
-    margin-bottom: 10px;
-}
-
-.faq-answer {
-    background-color: #edf2f7;
-    padding: 10px 15px;
-    border-radius: 4px;
-    margin-top: 5px;
-}
-
-.ai-answer {
-    background-color: #edf7f2;
     padding: 20px;
-    border-radius: 4px;
-    border-left: 4px solid #27ae60;
-    white-space: pre-line;
+    line-height: 1.6;
 }
-
 .loading {
-    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     margin: 20px 0;
-    display: none;
 }
-
-.loading i,
-.ai-loading i {
-    animation: spin 2s linear infinite;
-    font-size: 24px;
-    color: #3498db;
+.loading-spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin-right: 10px;
 }
-
-.ai-loading {
-    padding: 20px;
-    text-align: center;
-    font-size: 16px;
-    color: #7f8c8d;
-    background-color: #f8f9fa;
-    border-radius: 4px;
-    border-left: 4px solid #3498db;
-}
-
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
-
-.error-message {
-    color: #e74c3c;
-    text-align: center;
-    padding: 15px;
-    background-color: #fadbd8;
-    border-radius: 4px;
-    margin: 20px 0;
-    display: none;
+.search-container {
+    margin-bottom: 20px;
 }
-
-/* レスポンシブデザイン */
-@media (max-width: 768px) {
-    .results {
-        flex-direction: column;
-    }
-    
-    .sidebar-sections {
-        width: 100%;
-        order: 1;
-    }
-    
-    .main-section {
-        order: 2;
-    }
-    
-    .container {
-        padding: 15px;
-    }
+#question {
+    width: 70%;
+    padding: 10px;
+    font-size: 16px;
+}
+button {
+    padding: 10px 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+}
+button:hover {
+    background-color: #45a049;
+}
+.result-container {
+    margin-top: 20px;
+}
+.section {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+.section h3 {
+    margin-top: 0;
+    color: #333;
+}
+.product-item, .faq-item {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+.answer-section {
+    background-color: #f9f9f9;
+}
+.status-container {
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    font-size: 14px;
+}
+.status-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+.status-loading {
+    background-color: #ffc107;
+}
+.status-loaded {
+    background-color: #28a745;
+}
+.status-error {
+    background-color: #dc3545;
+}
+.hidden {
+    display: none;
 }

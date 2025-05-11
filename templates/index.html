@@ -8,39 +8,39 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}" type="text/css">
 </head>
 <body>
-    <div class="container">
-        <h1>商品Q&Aシステム</h1>
-        
-        <div class="search-container">
-            <input type="text" id="question" placeholder="質問を入力してください...">
-            <button id="submit-btn"><i class="fas fa-search"></i> 質問する</button>
+    <h1>Q&Aシステム</h1>
+    
+    <div id="system-status" class="status-container">
+        <h3>システム状態</h3>
+        <div class="status-item">
+            <div id="status-products" class="status-indicator status-loading"></div>
+            <span>商品データ: <span id="status-products-text">ロード中...</span></span>
         </div>
-        
-        <div class="loading">
-            <i class="fas fa-spinner"></i> 検索中...
+        <div class="status-item">
+            <div id="status-faqs" class="status-indicator status-loading"></div>
+            <span>FAQ データ: <span id="status-faqs-text">ロード中...</span></span>
         </div>
-        
-        <div class="error-message" id="error-message"></div>
-        
-        <div class="results" id="results" style="display: none;">
-            <div class="main-section" id="ai-answer-section">
-                <h2><i class="fas fa-robot"></i> AIによる回答</h2>
-                <div class="ai-answer" id="ai-answer"></div>
-            </div>
-            
-            <div class="sidebar-sections">
-                <div class="sidebar-section" id="products-section">
-                    <h2><i class="fas fa-shopping-bag"></i> 関連商品</h2>
-                    <div id="products-list" class="scrollable-list"></div>
-                </div>
-                
-                <div class="sidebar-section" id="faqs-section">
-                    <h2><i class="fas fa-question-circle"></i> 関連Q&A</h2>
-                    <div id="faqs-list" class="scrollable-list"></div>
-                </div>
-            </div>
+        <div class="status-item">
+            <div id="status-tokenizer" class="status-indicator status-loading"></div>
+            <span>キーワード分析: <span id="status-tokenizer-text">ロード中...</span></span>
+        </div>
+        <div class="status-item">
+            <div id="status-model" class="status-indicator status-loading"></div>
+            <span>AI モデル: <span id="status-model-text">ロード中...</span></span>
         </div>
     </div>
+
+    <div class="search-container">
+        <input type="text" id="question" placeholder="質問を入力してください">
+        <button id="search-btn">検索</button>
+    </div>
+    
+    <div id="loading" class="loading hidden">
+        <div class="loading-spinner"></div>
+        <p>処理中...</p>
+    </div>
+    
+    <div id="result" class="result-container"></div>
     <script src="{{ url_for('static', filename='index.js') }}"></script>
 </body>
 </html>
