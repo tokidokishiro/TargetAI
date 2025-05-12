@@ -4,6 +4,29 @@ document.addEventListener('DOMContentLoaded', function() {
     const loadingElement = document.getElementById('loading');
     const resultElement = document.getElementById('result');
     
+    // セクション展開/折りたたみのイベントリスナーを追加する関数
+    function addToggleListeners() {
+        document.querySelectorAll('.toggle-section').forEach(button => {
+            // 既存のリスナーを削除して重複を防ぐ
+            button.removeEventListener('click', toggleSectionHandler);
+            button.addEventListener('click', toggleSectionHandler);
+        });
+    }
+    
+    // セクション展開/折りたたみのハンドラー
+    function toggleSectionHandler() {
+        const targetSection = document.getElementById(this.dataset.target);
+        const isCollapsed = targetSection.classList.contains('collapsed');
+        
+        if (isCollapsed) {
+            targetSection.classList.remove('collapsed');
+            this.textContent = this.textContent.replace('▼', '▲');
+        } else {
+            targetSection.classList.add('collapsed');
+            this.textContent = this.textContent.replace('▲', '▼');
+        }
+    }
+    
     // システム状態を定期的に確認
     checkSystemStatus();
     const statusInterval = setInterval(checkSystemStatus, 3000);
@@ -20,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
         resultElement.innerHTML = '';
         
         try {
-            // 1. まず検索結果だけを素早く表示
+            // 1. まず検索結果を素早く表示
             const searchResponse = await fetch('/search', {
                 method: 'POST',
                 headers: {
@@ -59,18 +82,31 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // ロード中の場合
             if (answerData.loading) {
-                resultElement.innerHTML += `
+                // 既存の結果の上に追加
+                const currentContent = resultElement.innerHTML;
+                resultElement.innerHTML = `
                     <div class="section answer-section">
                         <h3>AI回答</h3>
                         <p>${answerData.message}</p>
                     </div>
+                    ${currentContent}
                 `;
                 hideLoading();
                 return;
             }
             
-            // AI回答を表示
-            displayAnswer(answerData);
+            // AI回答を先に表示
+            const currentContent = resultElement.innerHTML;
+            resultElement.innerHTML = `
+                <div class="section answer-section">
+                    <h3>AI回答</h3>
+                    <p>${answerData.answer}</p>
+                </div>
+                ${currentContent}
+            `;
+            
+            // トグルボタンのイベントリスナーを再追加
+            addToggleListeners();
             
         } catch (error) {
             console.error('Error:', error);
@@ -103,8 +139,14 @@ document.addEventListener('DOMContentLoaded', function() {
             
             resultsHTML += `
                 <div class="section">
-                    <h3>関連商品</h3>
-                    ${productsHTML}
+                    <h3>
+                        <button class="toggle-section" data-target="products-section">
+                            関連商品 (${data.products.length}件) ▼
+                        </button>
+                    </h3>
+                    <div id="products-section" class="section-content collapsed">
+                        ${productsHTML}
+                    </div>
                 </div>
             `;
         }
@@ -123,8 +165,14 @@ document.addEventListener('DOMContentLoaded', function() {
             
             resultsHTML += `
                 <div class="section">
-                    <h3>関連FAQ</h3>
-                    ${faqsHTML}
+                    <h3>
+                        <button class="toggle-section" data-target="faqs-section">
+                            関連FAQ (${data.faqs.length}件) ▼
+                        </button>
+                    </h3>
+                    <div id="faqs-section" class="section-content collapsed">
+                        ${faqsHTML}
+                    </div>
                 </div>
             `;
         }
@@ -139,18 +187,10 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
         }
         
-        resultElement.innerHTML = resultsHTML;
-    }
-    
-    function displayAnswer(data) {
-        const answerHTML = `
-            <div class="section answer-section">
-                <h3>AI回答</h3>
-                <p>${data.answer}</p>
-            </div>
-        `;
+        resultElement.innerHTML += resultsHTML;
         
-        resultElement.innerHTML += answerHTML;
+        // 初回のトグルボタンイベントリスナー追加
+        addToggleListeners();
     }
     
     function showLoading() {
