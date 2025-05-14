@@ -115,7 +115,7 @@ button:hover {
 /* スクロール時にコンテンツが見やすいように余白を追加 */
 #products-section,
 #faqs-section {
-    padding: 10px 5px 10px 0; /* 右側にスクロールバー用の余白を確保 */
+    padding: 10px 5px 0 0; /* 右側にスクロールバー用の余白を確保 */
 }
 
 .product-item h4, .faq-item h4 {
