@@ -97,6 +97,7 @@ button:hover {
     font-weight: normal;
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 10px;
+    line-height: 1.4;
 }
 
 .product-item, .faq-item {
@@ -109,6 +110,12 @@ button:hover {
     border-bottom: none;
     margin-bottom: 0;
     padding-bottom: 0;
+}
+
+/* スクロール時にコンテンツが見やすいように余白を追加 */
+#products-section,
+#faqs-section {
+    padding: 10px 5px 10px 0; /* 右側にスクロールバー用の余白を確保 */
 }
 
 .product-item h4, .faq-item h4 {
@@ -164,8 +171,8 @@ button:hover {
 
 /* セクション展開/折りたたみのスタイル */
 .section-content {
-    max-height: 500px;
-    overflow: hidden;
+    max-height: 400px; /* 固定高さを設定 */
+    overflow-y: auto; /* 垂直方向のスクロールバーを表示 */
     transition: max-height 0.3s ease, padding 0.3s ease;
 }
 
@@ -186,6 +193,11 @@ button:hover {
     text-decoration: none;
     position: relative;
     transition: color 0.3s ease;
+    text-align: left;
+    display: block;
+    width: 100%;
+    white-space: normal;
+    word-break: break-word;
 }
 
 .toggle-section:hover {
@@ -227,9 +239,32 @@ button:hover {
     button {
         width: 100%;
     }
+    
+    .toggle-section {
+        font-size: 0.9em;
+    }
 }
 
 /* スクロールバーのカスタマイズ */
+.section-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.section-content::-webkit-scrollbar-track {
+    background: var(--background-color);
+    border-radius: 3px;
+}
+
+.section-content::-webkit-scrollbar-thumb {
+    background-color: var(--primary-color);
+    border-radius: 3px;
+}
+
+.section-content::-webkit-scrollbar-thumb:hover {
+    background-color: #5a5a5a;
+}
+
+/* ページ全体のスクロールバー */
 ::-webkit-scrollbar {
     width: 8px;
 }

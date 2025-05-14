@@ -137,11 +137,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
             });
             
+            // 商品名のリストを作成（最大3つまで表示）
+            const productNames = data.products.map(product => product.商品名).slice(0, 3).join('、');
+            const moreProducts = data.products.length > 3 ? '...' : '';
+            
             resultsHTML += `
                 <div class="section">
                     <h3>
                         <button class="toggle-section" data-target="products-section">
-                            関連商品 (${data.products.length}件) ▼
+                            関連商品 (${data.products.length}件): ${productNames}${moreProducts} ▼
                         </button>
                     </h3>
                     <div id="products-section" class="section-content collapsed">
@@ -163,11 +167,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
             });
             
+            // FAQ質問のリストを作成（最大3つまで表示）
+            const faqQuestions = data.faqs.map(faq => faq.question).slice(0, 3).join('、');
+            const moreFaqs = data.faqs.length > 3 ? '...' : '';
+            
             resultsHTML += `
                 <div class="section">
                     <h3>
                         <button class="toggle-section" data-target="faqs-section">
-                            関連FAQ (${data.faqs.length}件) ▼
+                            関連FAQ (${data.faqs.length}件): ${faqQuestions}${moreFaqs} ▼
                         </button>
                     </h3>
                     <div id="faqs-section" class="section-content collapsed">

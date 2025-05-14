@@ -84,7 +84,7 @@ def get_model():
                 import google.generativeai as genai
                 genai.configure(api_key=GEMINI_API_KEY)
                 # API呼び出しのみを行うため、モデル参照だけを保持（メモリ効率化）
-                model = genai.GenerativeModel('models/gemini-2.5-pro-exp-03-25')
+                model = genai.GenerativeModel('models/gemma-3-27b-it')
                 resources_initialized['model'] = True
             except Exception as e:
                 print(f"Geminiモデル初期化エラー: {e}")
