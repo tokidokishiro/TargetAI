@@ -204,6 +204,7 @@ def find_related_products(user_question, score_threshold=2, top_n=3):
             f"{product.get('商品名', '')} "
             f"{product.get('説明', '')} "
             f"{product.get('その他', '')}"
+            f"{product.get('リンク', '')}"
         )
 
         score = 0
@@ -219,6 +220,7 @@ def find_related_products(user_question, score_threshold=2, top_n=3):
                 "商品名": product.get("商品名", ""),
                 "説明": product.get("説明", ""),
                 "その他": product.get("その他", ""),
+                "リンク": product.get("リンク", ""),  # リンクを結果に含める
                 "スコア": score
             })
 
@@ -246,6 +248,7 @@ def find_related_faqs(user_question, score_threshold=5, top_n=2, score_gap_thres
             f"{faq.get('question', '')} "
             f"{faq.get('answer', '')} "
             f"{' '.join(faq.get('related_word', []))}"
+            f"{faq.get('related_links', '')} "
         )
 
         score = 0
@@ -262,6 +265,7 @@ def find_related_faqs(user_question, score_threshold=5, top_n=2, score_gap_thres
             results.append({
                 "question": faq.get("question", ""),
                 "answer": faq.get("answer", ""),
+                "related_links": faq.get("related_links", ""),  # 関連リンクを結果に含める
                 "スコア": score
             })
 
