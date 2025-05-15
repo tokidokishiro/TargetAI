@@ -144,7 +144,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         <h4>${product.商品名}</h4>
                         <p>${product.説明 || ''}</p>
                         ${product.その他 ? `<p class="other-info"><small>${product.その他}</small></p>` : ''}
-                        ${product.リンク ? `<p class="product-link"><a href="${product.リンク}" target="_blank">公式ストアへ遷移</a></p>` : ''}
+                        ${product.リンク ? `<p class="product-link"><a href="${product.リンク}" target="_blank">公式ストアへ</a></p>` : ''}
+                        <p><small>※セキュリティのため、商品のご購入は、公式サイトからお手続きください。</small><p>
                     </div>
                 `;
             });
@@ -175,7 +176,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="faq-item">
                         <h4>${faq.question}</h4>
                         <p>${faq.answer}</p>
-                        ${faq.related_links ? `<p class="faq-link"><a href="${faq.related_links}" target="_blank">公式ストアへ遷移</a></p>` : ''}
+                        ${faq.related_links ? `<p class="faq-link"><a href="${faq.related_links}" target="_blank">公式ストアへ</a></p>` : ''}
+                        <p><small>※セキュリティのため、商品のご購入は、公式サイトからお手続きください。</small><p>
                     </div>
                 `;
             });
