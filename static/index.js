@@ -31,6 +31,9 @@ document.addEventListener('DOMContentLoaded', function() {
     checkSystemStatus();
     const statusInterval = setInterval(checkSystemStatus, 3000);
     
+    // markedライブラリをロード
+    loadMarkedLibrary();
+    
     searchBtn.addEventListener('click', async function() {
         const question = questionInput.value.trim();
         if (!question) {
@@ -95,15 +98,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
+            // マークダウンをHTMLに変換
+            const convertedAnswer = window.marked ? window.marked.parse(answerData.answer) : answerData.answer;
+            
             // AI回答を先に表示
             const currentContent = resultElement.innerHTML;
             resultElement.innerHTML = `
                 <div class="section answer-section">
                     <h3>AI回答</h3>
-                    <p>${answerData.answer}</p>
+                    <div class="markdown-content">${convertedAnswer}</div>
                 </div>
                 ${currentContent}
             `;
+            
+            // シンタックスハイライトの適用（もしPrismを使用する場合）
+            if (window.Prism) {
+                Prism.highlightAllUnder(document.querySelector('.markdown-content'));
+            }
             
             // トグルボタンのイベントリスナーを再追加
             addToggleListeners();
@@ -244,5 +255,43 @@ document.addEventListener('DOMContentLoaded', function() {
             indicator.className = 'status-indicator status-loading';
             text.textContent = 'ロード中...';
         }
+    }
+    
+    // marked.jsライブラリをロードする関数
+    function loadMarkedLibrary() {
+        if (window.marked) return; // 既にロードされている場合は何もしない
+        
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js';
+        script.onload = function() {
+            console.log('Marked.js library loaded');
+            // マークダウンオプションの設定
+            window.marked.setOptions({
+                breaks: true,       // 改行をbrタグに変換
+                gfm: true,          // GitHub Flavored Markdown
+                headerIds: true,    // ヘッダーにIDを付与
+                sanitize: false     // sanitizeはdeprecatedだが、念のため明示的に無効化
+            });
+        };
+        document.head.appendChild(script);
+        
+        // シンタックスハイライトのためのPrism.jsを追加（オプション）
+        const prismCSS = document.createElement('link');
+        prismCSS.rel = 'stylesheet';
+        prismCSS.href = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css';
+        document.head.appendChild(prismCSS);
+        
+        const prismScript = document.createElement('script');
+        prismScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js';
+        document.head.appendChild(prismScript);
+        
+        // マークダウンのスタイルを追加
+        addMarkdownStyles();
+    }
+    
+    // マークダウンコンテンツのスタイルを追加
+    function addMarkdownStyles() {
+        // styleタグではなく既存CSSに統合するため、不要になりました
+        // マークダウンのスタイルはCSSに統合済みです
     }
 });
