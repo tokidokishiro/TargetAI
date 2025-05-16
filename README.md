@@ -4,8 +4,8 @@
 
 - 小島大智が製作した特定商品の検索ツールです。
 - アプリURL
-  - https://muji-av9h.onrender.com
   - 無料プランを利用しているため、起動に40秒ほどお時間を頂戴しております。お忙しい中、大変恐れ入りますが、何卒ご理解のほどよろしくお願いいたします。
+  - https://muji-av9h.onrender.com
 
 ## コンセプト
 
@@ -110,11 +110,10 @@
 
 ## 今後の展望
 
-- 機械学習による検索精度の継続的改善
-- ユーザーフィードバックに基づく回答品質の向上
-- マルチモーダル検索（画像+テキスト）の実装
-- リアルタイムチャット機能の追加
-- モバイルアプリ版の開発
+- スコアの最適化による検索精度の継続的改善
+  - この検索結果によってＡＩの回答精度が変わるため
+- 質問の保存
+  - ユーザーの質問を知ることによって、表示方法の改善
 
 ## インストール方法
 
@@ -147,10 +146,10 @@ python app.py
 
 ## 開発者情報
 
-**氏名**: YOUR NAME  
-**メール**: your.email@example.com  
-**GitHub**: [github.com/yourusername](https://github.com/yourusername)  
-**ポートフォリオ**: [yourportfolio.com](https://yourportfolio.com)
+**氏名**: 小島　大智
+**メール**: kojimadaichi27@gmail.com
+**アプリURL**: https://muji-av9h.onrender.com![image](https://github.com/user-attachments/assets/f813c247-4b51-461a-9f05-da1ba2d8a4ad)
+
 
 ---
 
