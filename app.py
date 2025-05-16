@@ -513,7 +513,7 @@ if __name__ == '__main__':
     # 本番環境のセキュリティ設定
     port = int(os.environ.get('PORT', 5000))
     #production, development
-    is_debug = os.environ.get('FLASK_ENV') == 'development'
+    is_debug = os.environ.get('FLASK_ENV') == 'production'
     
     # より安全な設定で起動
     if not is_debug:
