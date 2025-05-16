@@ -22,8 +22,11 @@
   - AIはこの間に質問とスコア上位結果をもとに回答を作成
 - AIの回答作成後、ユーザーに提示
 
-![スクリーンショット](./screenshot.png)
-https://www.canva.com/design/DAGnlcXHoOM/Jcr4YAD3TYzndeyg1P0kVA/watch?utm_content=DAGnlcXHoOM&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h5be848aec6
+![スクリーンショット](./screenshot.pn１０ｍ
+
+
+https://github.com/user-attachments/assets/4b072ff3-4584-46b2-884f-c450ec918c67
+
 
 ## 技術スタック
 
