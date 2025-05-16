@@ -22,10 +22,11 @@
   - AIはこの間に質問とスコア上位結果をもとに回答を作成
 - AIの回答作成後、ユーザーに提示
 
-![スクリーンショット](./screenshot.pn１０ｍ
 
 
-https://github.com/user-attachments/assets/4b072ff3-4584-46b2-884f-c450ec918c67
+https://github.com/user-attachments/assets/829a0988-1556-4b3b-9a89-a18d0baf7b18
+
+
 
 
 ## 技術スタック
