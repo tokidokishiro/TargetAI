@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, jsonify, session
 import json
-from dotenv import load_dotenv
 import os
 import time
 import secrets
@@ -11,12 +10,16 @@ from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import html
+import gc  # ガベージコレクションを明示的に呼び出すため
 
 app = Flask(__name__)
 
 # セキュリティ設定
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))  # 強力な秘密鍵を設定
 csrf = CSRFProtect(app)  # CSRF保護を有効化
+
+# キャッシュ制御 - 使用しないリソースをすぐに解放
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 # レート制限の設定
 limiter = Limiter(
@@ -26,11 +29,11 @@ limiter = Limiter(
     storage_uri="memory://",
 )
 
-# ロギングの設定
+# ロギングの設定 - ファイルサイズを小さく保つ
 if not app.debug:
     if not os.path.exists('logs'):
         os.mkdir('logs')
-    file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=10)
+    file_handler = RotatingFileHandler('logs/app.log', maxBytes=5120, backupCount=3)  # サイズと保持数を削減
     file_handler.setFormatter(logging.Formatter(
         '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
     ))
@@ -39,93 +42,121 @@ if not app.debug:
     app.logger.setLevel(logging.INFO)
     app.logger.info('アプリケーションの起動')
 
-# グローバル変数 - メモリ使用量を最小化するため必要なときだけロード
-products = None
-faqs = None
-tokenizer = None
-model = None
-
-# .env ファイルをロード
-load_dotenv()
-
 # データファイルのパス設定 - パスインジェクション対策
 PRODUCTS_FILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "G&D.json"))
 FAQS_FILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "Q&A.json"))
 
-# アプリの準備状態 - lazily initialize resources
-resources_initialized = {
-    'products': False,
-    'faqs': False,
-    'tokenizer': False,
-    'model': False
+# キャッシュとリソース管理
+_cache = {
+    'products': None,
+    'faqs': None,
+    'tokenizer': None,
+    'model': None,
+    'last_used': {
+        'products': 0,
+        'faqs': 0,
+        'tokenizer': 0,
+        'model': 0
+    }
 }
 
-# メモリ効率のため、必要なときだけJSONファイルから商品データを読み込み
+# 最大キャッシュ寿命（秒）
+CACHE_TTL = 300  # 5分
+
+# キャッシュ管理関数
+def get_cached_resource(resource_name, loader_func):
+    """タイムアウト付きキャッシュからリソースを取得する"""
+    current_time = time.time()
+    
+    # TTLを超えたら自動でキャッシュを解放
+    if _cache[resource_name] is not None:
+        if current_time - _cache['last_used'][resource_name] > CACHE_TTL:
+            app.logger.info(f"{resource_name}のキャッシュを解放します（TTL超過）")
+            _cache[resource_name] = None
+            gc.collect()  # メモリ解放を促進
+    
+    # 必要なら再ロード
+    if _cache[resource_name] is None:
+        try:
+            _cache[resource_name] = loader_func()
+            _cache['last_used'][resource_name] = current_time
+        except Exception as e:
+            app.logger.error(f"{resource_name}のロードに失敗: {e}")
+            return None
+    else:
+        # 使用時刻を更新
+        _cache['last_used'][resource_name] = current_time
+    
+    return _cache[resource_name]
+
+# プロダクトデータをロードする関数
+def load_products():
+    try:
+        with open(PRODUCTS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        app.logger.error(f"商品データ読み込みエラー: {e}")
+        return []
+
+# FAQデータをロードする関数
+def load_faqs():
+    try:
+        with open(FAQS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        app.logger.error(f"FAQデータ読み込みエラー: {e}")
+        return []
+
+# トークナイザーをロードする関数
+def load_tokenizer():
+    try:
+        # 遅延インポート
+        from janome.tokenizer import Tokenizer
+        # メモリ効率化のため軽量モードで初期化
+        return Tokenizer(mmap=True)
+    except Exception as e:
+        app.logger.error(f"トークナイザー初期化エラー: {e}")
+        return None
+
+# Geminiモデルをロードする関数
+def load_model():
+    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+    if not GEMINI_API_KEY:
+        app.logger.warning("警告: .env ファイルに GEMINI_API_KEY が設定されていません。")
+        return None
+        
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=GEMINI_API_KEY)
+        # APIクライアント参照だけを保持
+        return genai.GenerativeModel('models/gemma-3-27b-it')
+    except Exception as e:
+        app.logger.error(f"Geminiモデル初期化エラー: {e}")
+        return None
+
+# 必要なときだけデータを取得する関数
 def get_products():
-    global products, resources_initialized
-    
-    if products is None and not resources_initialized['products']:
-        try:
-            with open(PRODUCTS_FILE, "r", encoding="utf-8") as f:
-                products = json.load(f)
-            resources_initialized['products'] = True
-        except Exception as e:
-            app.logger.error(f"商品データ読み込みエラー: {e}")
-            products = []
-            
-    return products or []
+    return get_cached_resource('products', load_products)
 
-# メモリ効率のため、必要なときだけFAQデータ読み込み
 def get_faqs():
-    global faqs, resources_initialized
-    
-    if faqs is None and not resources_initialized['faqs']:
-        try:
-            with open(FAQS_FILE, "r", encoding="utf-8") as f:
-                faqs = json.load(f)
-            resources_initialized['faqs'] = True
-        except Exception as e:
-            app.logger.error(f"FAQデータ読み込みエラー: {e}")
-            faqs = []
-            
-    return faqs or []
+    return get_cached_resource('faqs', load_faqs)
 
-# 必要なときだけトークナイザーを初期化
 def get_tokenizer():
-    global tokenizer, resources_initialized
-    
-    if tokenizer is None and not resources_initialized['tokenizer']:
-        try:
-            # ライブラリのインポートを遅延させてメモリ使用量を削減
-            from janome.tokenizer import Tokenizer
-            # メモリ効率化のためユーザー辞書なしの軽量モードで初期化
-            tokenizer = Tokenizer(mmap=True)
-            resources_initialized['tokenizer'] = True
-        except Exception as e:
-            app.logger.error(f"トークナイザー初期化エラー: {e}")
-            
-    return tokenizer
+    return get_cached_resource('tokenizer', load_tokenizer)
 
-# 必要なときだけGeminiモデルを初期化
 def get_model():
-    global model, resources_initialized
+    return get_cached_resource('model', load_model)
+
+# メモリを解放する関数
+def release_resources():
+    """アイドル状態の時にメモリを解放するヘルパー関数"""
+    global _cache
     
-    if model is None and not resources_initialized['model']:
-        # APIキーをより安全に取得
-        GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-        if GEMINI_API_KEY:
-            try:
-                import google.generativeai as genai
-                genai.configure(api_key=GEMINI_API_KEY)
-                # API呼び出しのみを行うため、モデル参照だけを保持（メモリ効率化）
-                model = genai.GenerativeModel('models/gemma-3-27b-it')
-                resources_initialized['model'] = True
-            except Exception as e:
-                app.logger.error(f"Geminiモデル初期化エラー: {e}")
-        else:
-            app.logger.warning("警告: .env ファイルに GEMINI_API_KEY が設定されていません。")
-            
-    return model
+    for resource in ['products', 'faqs', 'tokenizer', 'model']:
+        _cache[resource] = None
+    
+    gc.collect()
+    app.logger.info("未使用リソースを解放しました")
 
 # 入力検証関数 - インジェクション攻撃対策
 def validate_user_input(text):
@@ -136,7 +167,7 @@ def validate_user_input(text):
     # 不要な文字を削除
     text = text.strip()
     
-    # 長さ制限 (1000文字まで)
+    # 長さ制限 (1000文字まで - 元の制限に戻す)
     if len(text) > 1000:
         text = text[:1000]
     
@@ -161,35 +192,57 @@ def validate_user_input(text):
     
     return text
 
-# ユーザーの質問からキーワードを抽出 - メモリ使用量を削減
+# キーワード抽出の軽量実装
+def extract_keywords_light(text):
+    """トークナイザーを使わない軽量なキーワード抽出"""
+    if not text:
+        return []
+    
+    # ストップワード（日本語の一般的な助詞・助動詞など）
+    stop_words = set(['は', 'を', 'が', 'の', 'に', 'と', 'で', 'した', 'です', 'ます', 'から', 'まで', 'など'])
+    
+    # 単語分割して、短すぎるものやストップワードを除外
+    words = []
+    for word in text.split():
+        word = word.strip('.,!?()[]{}":;')
+        if len(word) > 1 and word not in stop_words:
+            words.append(word)
+    
+    # 重複を排除
+    return list(set(words))
+
+# ユーザーの質問からキーワードを抽出 - 遅延ロードと軽量実装
 def extract_keywords(text):
     # 入力検証
     text = validate_user_input(text)
     if not text:
         return []
     
-    # トークナイザーが使えない場合はシンプルな方法で
+    # まず軽量実装を試す
     tokenizer = get_tokenizer()
     if tokenizer is None:
-        # 簡易的なキーワード抽出（軽量実装）
-        important_words = []
-        for word in text.split():
-            if len(word) > 1:  # 短すぎる単語を除外
-                important_words.append(word)
-        return important_words
+        return extract_keywords_light(text)
     
     # Janomeでキーワード抽出（名詞と形容詞のみ）
     keywords = []
-    for token in tokenizer.tokenize(text):
+    token_iter = tokenizer.tokenize(text)
+    
+    # イテレータを使って最大100トークンまでに制限
+    count = 0
+    for token in token_iter:
+        count += 1
+        if count > 100:  # トークン数制限
+            break
+            
         pos = token.part_of_speech.split(',')[0]
         if pos in ["名詞", "形容詞"] and len(token.surface) > 1:
             keywords.append(token.surface)
     
-    # 結果をセットにして重複排除してからリストに変換
-    return list(set(keywords))
+    # 結果をセットにして重複排除してからリストに変換（最大20キーワードまで）
+    return list(set(keywords))[:20]  # キーワード数に上限を設定
 
-# 商品群から関連性の高い商品を抽出
-def find_related_products(user_question, score_threshold=2, top_n=3):
+# 商品群から関連性の高い商品を抽出 - 同スコアを含む抽出
+def find_related_products(user_question, score_threshold=2, top_n=3):  # トップ商品数を3に戻す
     # 入力検証
     user_question = validate_user_input(user_question)
     if not user_question:
@@ -197,19 +250,28 @@ def find_related_products(user_question, score_threshold=2, top_n=3):
     
     keywords = extract_keywords(user_question)
     products_data = get_products()
+    
+    if not products_data or not keywords:
+        return []
+    
     results = []
-
+    
+    # 最大100商品までに制限
+    product_count = 0
     for product in products_data:
-        combined_text = (
-            f"{product.get('商品名', '')} "
-            f"{product.get('説明', '')} "
-            f"{product.get('その他', '')}"
-            f"{product.get('リンク', '')}"
-        )
+        product_count += 1
+        if product_count > 100:  # 商品数制限
+            break
+            
+        # 必要な情報だけを抽出して処理
+        product_name = product.get('商品名', '')
+        product_desc = product.get('説明', '')
+        product_other = product.get('その他', '')
+        combined_text = f"{product_name} {product_desc} {product_other}"
 
         score = 0
         for kw in keywords:
-            if kw in product.get('商品名', ''):
+            if kw in product_name:
                 score += 5
             elif kw in combined_text:
                 score += 2
@@ -217,10 +279,10 @@ def find_related_products(user_question, score_threshold=2, top_n=3):
         if score >= score_threshold:
             # 必要な情報だけをコピーしてメモリ使用量を削減
             results.append({
-                "商品名": product.get("商品名", ""),
-                "説明": product.get("説明", ""),
-                "その他": product.get("その他", ""),
-                "リンク": product.get("リンク", ""),  # リンクを結果に含める
+                "商品名": product_name,
+                "説明": product_desc,
+                "その他": product_other,
+                "リンク": product.get("リンク", ""),
                 "スコア": score
             })
 
@@ -228,12 +290,23 @@ def find_related_products(user_question, score_threshold=2, top_n=3):
     sorted_results = sorted(results, key=lambda x: x["スコア"], reverse=True)
     if not sorted_results:
         return []
+    
+    # top_n個目までの最低スコアを取得
+    if len(sorted_results) > top_n:
+        min_top_score = sorted_results[top_n-1]["スコア"]
+        final_results = [r for r in sorted_results if r["スコア"] >= min_top_score]
+    else:
+        final_results = sorted_results
+    
+    # メモリクリア
+    results = None
+    sorted_results = None
+    gc.collect()
+    
+    return final_results
 
-    top_score = sorted_results[min(top_n - 1, len(sorted_results) - 1)]["スコア"]
-    return [r for r in sorted_results if r["スコア"] >= top_score]
-
-# FAQデータから関連Q&Aを抽出
-def find_related_faqs(user_question, score_threshold=5, top_n=2, score_gap_threshold=5):
+# FAQデータから関連Q&Aを抽出 - 同スコアを含む抽出
+def find_related_faqs(user_question, score_threshold=5, top_n=2, score_gap_threshold=5):  # トップFAQ数を2に戻す
     # 入力検証
     user_question = validate_user_input(user_question)
     if not user_question:
@@ -241,31 +314,41 @@ def find_related_faqs(user_question, score_threshold=5, top_n=2, score_gap_thres
     
     keywords = extract_keywords(user_question)
     faqs_data = get_faqs()
+    
+    if not faqs_data or not keywords:
+        return []
+    
     results = []
-
+    
+    # 最大50FAQまでに制限
+    faq_count = 0
     for faq in faqs_data:
-        combined_text = (
-            f"{faq.get('question', '')} "
-            f"{faq.get('answer', '')} "
-            f"{' '.join(faq.get('related_word', []))}"
-            f"{faq.get('related_links', '')} "
-        )
+        faq_count += 1
+        if faq_count > 50:  # FAQ数制限
+            break
+            
+        # 必要な情報だけを抽出
+        question = faq.get('question', '')
+        answer = faq.get('answer', '')
+        related_word = ' '.join(faq.get('related_word', []))
+        related_links = faq.get('related_links', '')
+        combined_text = f"{question} {answer} {related_word} {related_links}"
 
         score = 0
         for kw in keywords:
-            if kw in faq.get("question", ""):
+            if kw in question:
                 score += 5
-            if kw in faq.get("answer", ""):
+            if kw in answer:
                 score += 4
             elif kw in combined_text:
                 score += 3
 
         if score >= score_threshold:
-            # 必要な情報だけをコピーしてメモリ使用量を削減
+            # 必要な情報だけをコピー
             results.append({
-                "question": faq.get("question", ""),
-                "answer": faq.get("answer", ""),
-                "related_links": faq.get("related_links", ""),  # 関連リンクを結果に含める
+                "question": question,
+                "answer": answer,
+                "related_links": related_links,
                 "スコア": score
             })
 
@@ -281,13 +364,25 @@ def find_related_faqs(user_question, score_threshold=5, top_n=2, score_gap_thres
         
         # スコアの差が閾値を超えている場合、最高スコアのみを返す
         if (top_score - second_score) >= score_gap_threshold:
-            return [sorted_results[0]]
+            final_results = [sorted_results[0]]
+        else:
+            # そうでなければ、上位top_n＋同スコアまで抽出
+            if len(sorted_results) > top_n:
+                min_top_score = sorted_results[top_n-1]["スコア"]
+                final_results = [r for r in sorted_results if r["スコア"] >= min_top_score]
+            else:
+                final_results = sorted_results
+    else:
+        final_results = sorted_results
     
-    # そうでなければ、元の処理を行う
-    top_score = sorted_results[min(top_n - 1, len(sorted_results) - 1)]["スコア"]
-    return [r for r in sorted_results if r["スコア"] >= top_score]
+    # メモリクリア
+    results = None
+    sorted_results = None
+    gc.collect()
+    
+    return final_results
 
-# Geminiを使用した回答生成関数
+# Geminiを使用した回答生成関数 - テキスト長制限を解除
 def generate_answer_gemini(question, related_items):
     # 入力検証
     question = validate_user_input(question)
@@ -304,25 +399,31 @@ def generate_answer_gemini(question, related_items):
 
     # 関連情報をサニタイズして前処理
     context = ""
-    for item in related_items:
+    # 最大8つの関連アイテムを使用
+    for item in related_items[:8]:
         if "商品名" in item:
-            context += f"商品名: {html.escape(item.get('商品名', ''))}, "
+            context += f"商品: {html.escape(item.get('商品名', ''))}, "
             context += f"説明: {html.escape(item.get('説明', ''))}, "
             context += f"その他: {html.escape(item.get('その他', ''))}\n"
         elif "question" in item:
             context += f"質問: {html.escape(item.get('question', ''))}, "
             context += f"回答: {html.escape(item.get('answer', ''))}\n"
 
-    # プロンプトインジェクション対策
-    safe_prompt = f"""以下の関連情報に基づいて、質問「{question}」への回答を生成してください。\n\n{context}\n\n回答:"""
+    # プロンプト
+    safe_prompt = f"""以下の情報に基づいて「{question}」への回答を生成してください。\n\n{context}\n\n回答:"""
 
     try:
         # メモリ使用量を減らすためにストリーミング処理は避ける
         response = model_instance.generate_content(safe_prompt)
-        return response.text.strip()
+        result = response.text.strip()
+        return result
     except Exception as e:
         app.logger.error(f"回答生成中にエラーが発生しました: {e}")
         return "回答の生成中にエラーが発生しました。しばらく経ってからもう一度お試しください。"
+    finally:
+        # 明示的なガベージコレクションを促す
+        response = None
+        gc.collect()
 
 @app.before_request
 def before_request():
@@ -331,6 +432,10 @@ def before_request():
     if 'visits' not in session:
         session['visits'] = 0
     session['visits'] += 1
+    
+    # 500回のリクエストごとにメモリリリースをトリガー
+    if session['visits'] % 500 == 0:
+        release_resources()
 
 @app.after_request
 def after_request(response):
@@ -351,11 +456,18 @@ def index():
 @limiter.limit("30 per minute")  # レート制限
 def status():
     """リソースのロード状態を確認するAPI"""
-    global resources_initialized
+    # 現在のメモリ状態を確認
+    resource_status = {
+        'products': _cache['products'] is not None,
+        'faqs': _cache['faqs'] is not None,
+        'tokenizer': _cache['tokenizer'] is not None,
+        'model': _cache['model'] is not None
+    }
     
     return jsonify({
-        'ready': True,  # 常にTrueを返す（遅延ロード方式に変更）
-        'resources': resources_initialized
+        'ready': True,  # 常にTrueを返す（遅延ロード方式）
+        'resources': resource_status,
+        'memory_management': 'active'
     })
 
 @app.route('/search', methods=['POST'])
@@ -391,7 +503,12 @@ def search():
         related_products = find_related_products(user_question)
         related_faqs = find_related_faqs(user_question)
         
-        app.logger.info(f"検索処理時間: {time.time() - start_time:.2f}秒")
+        processing_time = time.time() - start_time
+        app.logger.info(f"検索処理時間: {processing_time:.2f}秒")
+        
+        # 処理時間が長すぎる場合、ガベージコレクションを実行
+        if processing_time > 2.0:
+            gc.collect()
         
         return jsonify({
             'products': related_products,
@@ -432,8 +549,8 @@ def get_answer():
     
     try:
         # 関連情報を取得
-        related_products = find_related_products(user_question)
-        related_faqs = find_related_faqs(user_question)
+        related_products = find_related_products(user_question, top_n=3)
+        related_faqs = find_related_faqs(user_question, top_n=2)
         all_related = related_products + related_faqs
         
         # Geminiによる回答生成
@@ -476,12 +593,15 @@ def ask_question():
     
     try:
         # 関連商品と関連FAQを検索
-        related_products = find_related_products(user_question)
-        related_faqs = find_related_faqs(user_question)
+        related_products = find_related_products(user_question, top_n=3)
+        related_faqs = find_related_faqs(user_question, top_n=2)
         
         # Geminiによる回答生成
         all_related = related_products + related_faqs
         ai_answer = generate_answer_gemini(user_question, all_related)
+        
+        # 明示的なガベージコレクション
+        gc.collect()
         
         return jsonify({
             'products': related_products,
@@ -494,6 +614,24 @@ def ask_question():
             'error': '質問処理中にエラーが発生しました。'
         }), 500
 
+# メモリリリースエンドポイント - 管理用
+@app.route('/memory/release', methods=['POST'])
+@csrf.exempt
+@limiter.limit("5 per minute")
+def release_memory():
+    """明示的にメモリを解放するエンドポイント"""
+    try:
+        release_resources()
+        return jsonify({
+            'status': 'success',
+            'message': 'メモリを解放しました'
+        })
+    except Exception as e:
+        app.logger.error(f"メモリ解放エラー: {e}")
+        return jsonify({
+            'error': 'メモリ解放中にエラーが発生しました'
+        }), 500
+
 # エラーハンドラー
 @app.errorhandler(404)
 def not_found_error(error):
@@ -502,6 +640,8 @@ def not_found_error(error):
 @app.errorhandler(500)
 def internal_error(error):
     app.logger.error(f"内部サーバーエラー: {error}")
+    # エラー時にメモリを解放
+    release_resources()
     return jsonify({'error': 'サーバー内部エラーが発生しました'}), 500
 
 @app.errorhandler(429)
@@ -513,7 +653,7 @@ if __name__ == '__main__':
     # 本番環境のセキュリティ設定
     port = int(os.environ.get('PORT', 5000))
     #production, development
-    is_debug = os.environ.get('FLASK_ENV') == 'production'
+    is_debug = os.environ.get('FLASK_ENV') == 'development'  # 修正：production でないときのみデバッグモード
     
     # より安全な設定で起動
     if not is_debug:
