@@ -105,6 +105,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // 検索結果を表示 - 安全な関数に置き換え
             displaySearchResults(searchResponse);
             
+            // 検索結果が表示された時点でトグルリスナーを追加
+            addToggleListeners();
+            
             // 2. 次にAI回答を取得（これは時間がかかる）
             const answerResponse = await secureServerRequest('/answer', { question: questionText });
             
@@ -130,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // AI回答を先に表示 - 安全な方法に置き換え
             displayAIAnswer(answerResponse.answer);
             
-            // トグルボタンのイベントリスナーを再追加
+            // AI回答が表示された後も再度トグルリスナーを追加
             addToggleListeners();
             
         } catch (error) {

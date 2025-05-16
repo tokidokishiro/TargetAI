@@ -7,7 +7,7 @@
  * - モダンなCSS機能の活用
  */
 
-:root {
+ :root {
   /* カラーパレット */
   --primary-color: #4a4a4a;
   --primary-dark: #3a3a3a;
@@ -303,6 +303,10 @@ button:focus {
   transform: scaleX(1);
 }
 
+.toggle-section:focus {
+  outline: none;
+}
+
 .hidden {
   display: none;
 }
@@ -324,6 +328,12 @@ button:focus {
 .faq-link a:hover {
   color: var(--link-hover);
   background-color: var(--link-bg-hover);
+}
+
+/* リンクがクリックされた時（フォーカス時）の枠を消す */
+.product-link a:focus,
+.faq-link a:focus {
+  outline: none;
 }
 
 /* マークダウンコンテンツ */
@@ -510,14 +520,18 @@ button:focus {
   }
 }
 
-/* フォーカス表示の改善 */
-a:focus,
-button:focus,
+/* フォーカス表示の改善（元のコードを削除して、特定の要素のみにフォーカス表示を適用） */
 input:focus,
 select:focus,
 textarea:focus {
   outline: 2px solid var(--accent-color);
   outline-offset: 2px;
+}
+
+/* フォーカス時の枠を削除 */
+a:focus,
+button:focus {
+  outline: none;
 }
 
 /* 印刷スタイル */
