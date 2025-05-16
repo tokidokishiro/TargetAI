@@ -23,6 +23,7 @@
 - AIの回答作成後、ユーザーに提示
 
 ![スクリーンショット](./screenshot.png)
+https://www.canva.com/design/DAGnlcXHoOM/Jcr4YAD3TYzndeyg1P0kVA/watch?utm_content=DAGnlcXHoOM&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h5be848aec6
 
 ## 技術スタック
 
