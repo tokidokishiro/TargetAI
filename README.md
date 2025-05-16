@@ -148,7 +148,7 @@ python app.py
 
 **氏名**: 小島　大智
 **メール**: kojimadaichi27@gmail.com
-**アプリURL**: https://muji-av9h.onrender.com![image](https://github.com/user-attachments/assets/f813c247-4b51-461a-9f05-da1ba2d8a4ad)
+**アプリURL**: https://muji-av9h.onrender.com
 
 
 ---
