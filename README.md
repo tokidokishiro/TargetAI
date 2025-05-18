@@ -8,6 +8,7 @@
 - アプリURL
   - アプリにアクセスがない場合、スリープモードになるよう設定しました。起動に少々時間がかかる場合があります。お忙しい中、大変恐れ入りますが、何卒ご理解のほどよろしくお願いいたします。
   - https://mujiai-424163415875.asia-northeast1.run.app
+  - <a href="https://www.google.com" target="_blank">Googleへ</a>
 
 ## コンセプト
 
