@@ -6,7 +6,7 @@
 
 - 小島大智が製作した特定商品の検索ツールです。
 - アプリURL
-  - https://mujiai-424163415875.asia-northeast1.run.app
+  - https://target-ai-424163415875.asia-northeast1.run.app
 
 ## コンセプト
 
@@ -138,7 +138,7 @@ https://github.com/user-attachments/assets/058d9f70-663a-4065-910e-9c8032ff1c11
 
 **氏名**: 小島　大智
 **メール**: kojimadaichi27@gmail.com
-**アプリURL**: https://mujiai-424163415875.asia-northeast1.run.app
+**アプリURL**: https://target-ai-424163415875.asia-northeast1.run.app
 
 
 
