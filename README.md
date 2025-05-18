@@ -1,10 +1,8 @@
 # AI搭載 商品・FAQ検索システム
 
-本アプリは、無印良品のコスメケア商品に関する情報を効率的に学習・比較できるように設計された **商品情報、FAQにおいてのAI回答システム** です。  
-
 ## はじめに
 
-- 小島大智が製作した特定商品の検索ツールです。
+- 本アプリは、無印良品のコスメケア商品に関する情報を効率的に学習・比較できるように設計された **商品情報、FAQにおいてのAI回答システム** です。  
 - アプリURL
   - https://target-ai-424163415875.asia-northeast1.run.app
 
@@ -136,7 +134,6 @@ https://github.com/user-attachments/assets/058d9f70-663a-4065-910e-9c8032ff1c11
 
 ## 開発者情報
 
-**氏名**: 小島　大智
 **メール**: kojimadaichi27@gmail.com
 **アプリURL**: https://target-ai-424163415875.asia-northeast1.run.app
 
